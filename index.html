@@ -98,14 +98,14 @@
                     const card = document.createElement('div');
                     card.className = 'message-card';
                     
-                    const timestampDisplay = formatTimestamp(msg.timestamp);
+                    const timestampDisplay = formatTimestamp(msg.messageId);
 
                     card.innerHTML = `
                         <div class="message-header">
-                            <span class="message-name"><i class="fas fa-user-circle"></i> ${msg.name}</span>
+                            <span class="message-name"><i class="fas fa-user-circle"></i> ${msg.nickname}</span>
                             <span class="message-timestamp">${timestampDisplay}</span>
                         </div>
-                        <p class="message-content">${msg.message.replace(/\n/g, '<br>')}</p>
+                        <p class="message-content">${msg.content.replace(/\n/g, '<br>')}</p>
                     `;
                     messagesContainer.appendChild(card);
                 });
@@ -187,3 +187,4 @@
 </body>
 
 </html>
+

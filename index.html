@@ -85,7 +85,6 @@
             function renderMessages(messages) {
                 messagesContainer.innerHTML = '';
                 
-                // ✨【修正】先檢查 messages 是否存在，避免 undefined 錯誤
                 if (!messages || messages.length === 0) {
                     messageCount.textContent = 0;
                     messagesContainer.innerHTML = '<p style="text-align: center; color: #999;">目前還沒有留言喔，快來第一個發佈吧！</p>';
@@ -98,8 +97,10 @@
                     const card = document.createElement('div');
                     card.className = 'message-card';
                     
+                    // 【最終修正B】時間戳來源從 msg.timestamp 改為 msg.messageId
                     const timestampDisplay = formatTimestamp(msg.messageId);
 
+                    // 【最終修正A】顯示的欄位名稱從 msg.name/message 改為 msg.nickname/content
                     card.innerHTML = `
                         <div class="message-header">
                             <span class="message-name"><i class="fas fa-user-circle"></i> ${msg.nickname}</span>
@@ -111,7 +112,6 @@
                 });
             }
 
-            // ====================【👇👇 主要修改在這裡 👇👇】====================
             async function fetchMessages() {
                 try {
                     messagesContainer.innerHTML = '<p style="text-align: center; color: #4a90e2;"><i class="fas fa-spinner fa-spin"></i> 正在載入留言...</p>';
@@ -119,16 +119,12 @@
                     const response = await fetch(API_URL, { method: 'GET' });
                     if (!response.ok) throw new Error('Failed to fetch messages from AWS.');
                     
-                    // 1. 將 API 回傳的完整資料存到 'data' 變數
                     const data = await response.json();
                     
-                    // 2. (可選) 在瀏覽器 Console 印出資料，方便未來除錯
                     console.log("從 API 收到的原始資料:", data);
 
-                    // 3. ✨【關鍵修改】✨ 從 data 物件中，只取出 "Items" 這個陣列
                     const messages = data.Items; 
                     
-                    // 4. 把真正的留言陣列傳給 renderMessages 函式
                     renderMessages(messages);
 
                 } catch (error) {
@@ -136,7 +132,6 @@
                     messagesContainer.innerHTML = '<p style="color: red; text-align: center;">無法載入留言資料。請檢查 API Gateway 設定。</p>';
                 }
             }
-            // ====================【👆👆 主要修改在這裡 👆👆】====================
 
             messageForm.addEventListener('submit', async (e) => {
                 e.preventDefault();
@@ -185,6 +180,4 @@
         });
     </script>
 </body>
-
 </html>
-

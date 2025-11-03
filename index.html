@@ -30,6 +30,12 @@
         .message-timestamp { font-size: 0.8em; color: #999; }
         .message-content { flex-grow: 1; margin-bottom: 15px; color: #333; }
 
+        /* LINE 按鈕特有樣式，讓 LINE 圖示更明顯 */
+        .submit-btn i.fab.fa-line {
+            color: #fff;
+            margin-right: 8px;
+        }
+
         @media (max-width: 600px) {
             .container { margin: 20px; padding: 20px; }
             .message-grid { grid-template-columns: 1fr; }
@@ -43,18 +49,15 @@
         <p class="subtitle">留下你的想法!</p>
 
         <section class="post-message">
-            <h2>發表新留言</h2>
+            <h2>發表新留言 (LINE 登入綁定)</h2>
             <form id="message-form">
-                <div class="input-group">
-                    <label for="name">暱稱</label>
-                    <input type="text" id="name" placeholder="輸入你的暱稱...">
-                </div>
                 <div class="input-group">
                     <label for="message">留言內容</label>
                     <textarea id="message" rows="4" required placeholder="寫下你的訊息..."></textarea>
                 </div>
-                <button type="submit" class="submit-btn">
-                    <i class="fas fa-paper-plane"></i> 發佈留言
+                
+                <button type="submit" class="submit-btn line-login-trigger">
+                    <i class="fab fa-line"></i> 使用 LINE 登入並發佈留言
                 </button>
             </form>
         </section>
@@ -68,6 +71,19 @@
 
     <script>
         const API_URL = 'https://ibnc1aqskh.execute-api.ap-southeast-2.amazonaws.com/test/messages'; 
+        
+        // 🚨 這是給後端 Python Lambda 用的常數，您不需要更改它，但要確保 Lambda 裡用的是對的網址
+        const FRONTEND_URL = '[請替換成您的留言板公開網址]'; 
+
+        // --- 區塊二 B: LINE 授權相關常數 ---
+        const LINE_CHANNEL_ID = '2008410094'; 
+        const LINE_CALLBACK_URL = 'https://ibnc1aqskh.execute-api.ap-southeast-2.amazonaws.com/test/line-callback';
+        const SCOPE = 'profile'; 
+
+        // 授權 URL 樣板：我們將留言內容 (state) 加到網址中
+        const LINE_AUTH_URL = `https://access.line.me/oauth2/v2.1/authorize?response_type=code&client_id=${LINE_CHANNEL_ID}&redirect_uri=${LINE_CALLBACK_URL}&scope=${SCOPE}&state=`;
+        // --- 結束 LINE 常數設定 ---
+
 
         document.addEventListener('DOMContentLoaded', () => {
             const messageForm = document.getElementById('message-form');
@@ -97,10 +113,9 @@
                     const card = document.createElement('div');
                     card.className = 'message-card';
                     
-                    // 【最終修正B】時間戳來源從 msg.timestamp 改為 msg.messageId
                     const timestampDisplay = formatTimestamp(msg.messageId);
 
-                    // 【最終修正A】顯示的欄位名稱從 msg.name/message 改為 msg.nickname/content
+                    // 這裡的 msg.nickname 和 msg.content 假定您的 API 會傳回這兩個欄位
                     card.innerHTML = `
                         <div class="message-header">
                             <span class="message-name"><i class="fas fa-user-circle"></i> ${msg.nickname}</span>
@@ -121,8 +136,6 @@
                     
                     const data = await response.json();
                     
-                    console.log("從 API 收到的原始資料:", data);
-
                     const messages = data.Items; 
                     
                     renderMessages(messages);
@@ -133,13 +146,12 @@
                 }
             }
 
-            messageForm.addEventListener('submit', async (e) => {
+            // --- 區塊二 B: 替換後的提交事件監聽器 ---
+            messageForm.addEventListener('submit', (e) => {
                 e.preventDefault();
 
-                const nameInput = document.getElementById('name');
+                // 移除對 nameInput 的讀取
                 const messageInput = document.getElementById('message');
-
-                const name = nameInput.value.trim();
                 const message = messageInput.value.trim();
                 
                 if (message.length === 0) {
@@ -147,38 +159,29 @@
                     return;
                 }
                 
-                const submitBtn = document.querySelector('.submit-btn');
-                submitBtn.disabled = true;
-                submitBtn.innerHTML = '<i class="fas fa-spinner fa-spin"></i> 發佈中...';
-
-                try {
-                    const response = await fetch(API_URL, {
-                        method: 'POST',
-                        headers: {
-                            'Content-Type': 'application/json'
-                        },
-                        body: JSON.stringify({ name: name, message: message }) 
-                    });
-
-                    if (!response.ok) throw new Error('API 響應錯誤 ' + response.status);
-
-                    nameInput.value = '';
-                    messageInput.value = '';
-                    await fetchMessages(); 
-                    
-                } catch (error) {
-                    console.error("Error posting message:", error);
-                    alert('留言發佈失敗，請檢查網路或 Lambda/API Gateway 設定。');
-                } finally {
-                    submitBtn.disabled = false;
-                    submitBtn.innerHTML = '<i class="fas fa-paper-plane"></i> 發佈留言';
-                }
+                // 1. 將留言內容 URL 編碼後作為 state 參數
+                const encodedMessage = encodeURIComponent(message);
+                
+                // 2. 導向 LINE 授權頁面，觸發後續的 LINE Login 流程
+                window.location.href = LINE_AUTH_URL + encodedMessage;
             });
+            // --- 替換結束 ---
+
+            // --- 新增：處理 Callback 後的結果顯示 ---
+            const urlParams = new URLSearchParams(window.location.search);
+            if (urlParams.get('success') === 'true') {
+                alert('留言發佈成功，並已使用您的 LINE 暱稱！');
+                // 清除 URL 上的參數，保持頁面乾淨
+                history.replaceState(null, '', window.location.pathname); 
+            } else if (urlParams.get('error')) {
+                alert('留言發佈失敗，請重試。錯誤碼: ' + urlParams.get('error'));
+                history.replaceState(null, '', window.location.pathname);
+            }
+            // --- 結束新增 ---
             
             fetchMessages();
 
         });
     </script>
 </body>
-</html>      
-
+</html>

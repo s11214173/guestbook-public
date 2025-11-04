@@ -75,7 +75,7 @@
         // 🚨 這是給後端 Python Lambda 用的常數，您不需要更改它，但要確保 Lambda 裡用的是對的網址
         const FRONTEND_URL = '[請替換成您的留言板公開網址]'; 
 
-        // --- 區塊二 B: LINE 授權相關常數 ---
+        // --- LINE 授權相關常數 ---
         const LINE_CHANNEL_ID = '2008410094'; 
         const LINE_CALLBACK_URL = 'https://ibnc1aqskh.execute-api.ap-southeast-2.amazonaws.com/test/line-callback';
         const SCOPE = 'profile'; 
@@ -146,11 +146,10 @@
                 }
             }
 
-            // --- 區塊二 B: 替換後的提交事件監聽器 ---
+            // --- 最終優化後的提交事件監聽器 (解決手機登入問題) ---
             messageForm.addEventListener('submit', (e) => {
                 e.preventDefault();
 
-                // 移除對 nameInput 的讀取
                 const messageInput = document.getElementById('message');
                 const message = messageInput.value.trim();
                 
@@ -159,11 +158,26 @@
                     return;
                 }
                 
-                // 1. 將留言內容 URL 編碼後作為 state 參數
+                // 1. 構建 Web 授權網址 (作為備用)
                 const encodedMessage = encodeURIComponent(message);
+                const finalAuthUrl = LINE_AUTH_URL + encodedMessage; 
+
+                // 2. 構建 Deep Link 網址 (優先強制開啟 App)
+                // 這是解決 LINE 內嵌瀏覽器登入問題的關鍵
+                const deepLinkUrl = `line://auth/login?url=${encodeURIComponent(finalAuthUrl)}`;
                 
-                // 2. 導向 LINE 授權頁面，觸發後續的 LINE Login 流程
-                window.location.href = LINE_AUTH_URL + encodedMessage;
+                // 3. 嘗試 Deep Link
+                // 設定一個定時器，如果 Deep Link 失敗，則回退到 Web 授權
+                const fallbackTimer = setTimeout(() => {
+                    // 如果 500ms 內 App 沒有被打開，則導向 Web 授權 (原來的流程)
+                    window.location.href = finalAuthUrl;
+                }, 500); 
+
+                // 嘗試 Deep Link 強制跳轉 App
+                window.location.href = deepLinkUrl;
+
+                // 如果 App 成功打開，瀏覽器會失去焦點，我們清除定時器，防止錯誤跳轉
+                window.addEventListener('blur', () => clearTimeout(fallbackTimer));
             });
             // --- 替換結束 ---
 

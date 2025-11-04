@@ -171,7 +171,7 @@
                 const fallbackTimer = setTimeout(() => {
                     // 如果 500ms 內 App 沒有被打開，則導向 Web 授權 (原來的流程)
                     window.location.href = finalAuthUrl;
-                }, 500); 
+                }, 100); 
 
                 // 嘗試 Deep Link 強制跳轉 App
                 window.location.href = deepLinkUrl;
@@ -199,3 +199,4 @@
     </script>
 </body>
 </html>
+

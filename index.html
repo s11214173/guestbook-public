@@ -146,7 +146,7 @@
                 }
             }
 
-            // --- 最終優化後的提交事件監聽器 (解決手機登入問題) ---
+            // --- 最終穩定版：恢復到最基礎的 Web 授權跳轉邏輯 ---
             messageForm.addEventListener('submit', (e) => {
                 e.preventDefault();
 
@@ -158,26 +158,11 @@
                     return;
                 }
                 
-                // 1. 構建 Web 授權網址 (作為備用)
+                // 1. 將留言內容 URL 編碼後作為 state 參數
                 const encodedMessage = encodeURIComponent(message);
-                const finalAuthUrl = LINE_AUTH_URL + encodedMessage; 
-
-                // 2. 構建 Deep Link 網址 (優先強制開啟 App)
-                // 這是解決 LINE 內嵌瀏覽器登入問題的關鍵
-                const deepLinkUrl = `line://auth/login?url=${encodeURIComponent(finalAuthUrl)}`;
                 
-                // 3. 嘗試 Deep Link
-                // 設定一個定時器，如果 Deep Link 失敗，則回退到 Web 授權
-                const fallbackTimer = setTimeout(() => {
-                    // 如果 500ms 內 App 沒有被打開，則導向 Web 授權 (原來的流程)
-                    window.location.href = finalAuthUrl;
-                }, 100); 
-
-                // 嘗試 Deep Link 強制跳轉 App
-                window.location.href = deepLinkUrl;
-
-                // 如果 App 成功打開，瀏覽器會失去焦點，我們清除定時器，防止錯誤跳轉
-                window.addEventListener('blur', () => clearTimeout(fallbackTimer));
+                // 2. 直接導向 LINE 的 Web 授權頁面，讓 LINE 官方自己處理登入流程
+                window.location.href = LINE_AUTH_URL + encodedMessage;
             });
             // --- 替換結束 ---
 
@@ -199,4 +184,3 @@
     </script>
 </body>
 </html>
-
